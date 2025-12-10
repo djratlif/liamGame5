@@ -147,9 +147,10 @@
 
         // Falling objects
         let fallingObjects = [];
+        const OBJECT_SIZE = 25;  // Size of emoji objects for collision detection
         const objectTypes = {
-            star: { emoji: '⭐', points: 10, isBad: false, size: 25 },
-            bomb: { emoji: '💣', points: 0, isBad: true, size: 25 }
+            star: { emoji: '⭐', points: 10, isBad: false, size: OBJECT_SIZE },
+            bomb: { emoji: '💣', points: 0, isBad: true, size: OBJECT_SIZE }
         };
 
         // Track mouse position
@@ -160,14 +161,13 @@
 
         // Create falling object
         function createFallingObject() {
-            const types = Object.keys(objectTypes);
             // Increase bomb probability with level
             const bombChance = Math.min(0.3, 0.1 + level * 0.02);
             const type = Math.random() < bombChance ? 'bomb' : 'star';
             
             return {
-                x: Math.random() * (canvas.width - 30),
-                y: -30,
+                x: Math.random() * (canvas.width - OBJECT_SIZE),
+                y: -OBJECT_SIZE,
                 type: type,
                 speed: 2 + level * 0.3 + Math.random() * 2
             };
@@ -218,8 +218,8 @@
                 obj.y += obj.speed;
 
                 // Check collision with basket
-                if (obj.y + 20 >= basket.y && obj.y <= basket.y + basket.height) {
-                    if (obj.x + 20 >= basket.x && obj.x <= basket.x + basket.width) {
+                if (obj.y + OBJECT_SIZE >= basket.y && obj.y <= basket.y + basket.height) {
+                    if (obj.x + OBJECT_SIZE >= basket.x && obj.x <= basket.x + basket.width) {
                         const objData = objectTypes[obj.type];
                         if (objData.isBad) {
                             lives--;
