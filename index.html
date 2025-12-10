@@ -148,6 +148,15 @@
         // Falling objects
         let fallingObjects = [];
         const OBJECT_SIZE = 25;  // Size of emoji objects for collision detection
+        
+        // Game balance constants
+        const MAX_BOMB_CHANCE = 0.3;      // Maximum probability of bomb spawn
+        const BASE_BOMB_CHANCE = 0.1;     // Starting bomb probability
+        const BOMB_CHANCE_INCREASE = 0.02; // Bomb chance increase per level
+        const BASKET_MOVEMENT_DAMPING = 0.15; // Smoothing factor for basket movement
+        const BASE_SPAWN_RATE = 0.02;     // Base probability of object spawn per frame
+        const SPAWN_RATE_INCREASE = 0.005; // Spawn rate increase per level
+        
         const objectTypes = {
             star: { emoji: '⭐', points: 10, isBad: false, size: OBJECT_SIZE },
             bomb: { emoji: '💣', points: 0, isBad: true, size: OBJECT_SIZE }
@@ -162,7 +171,7 @@
         // Create falling object
         function createFallingObject() {
             // Increase bomb probability with level
-            const bombChance = Math.min(0.3, 0.1 + level * 0.02);
+            const bombChance = Math.min(MAX_BOMB_CHANCE, BASE_BOMB_CHANCE + level * BOMB_CHANCE_INCREASE);
             const type = Math.random() < bombChance ? 'bomb' : 'star';
             
             return {
@@ -209,7 +218,7 @@
             if (!gameRunning) return;
 
             // Move basket towards mouse
-            basket.x += (mouseX - basket.x - basket.width / 2) * 0.15;
+            basket.x += (mouseX - basket.x - basket.width / 2) * BASKET_MOVEMENT_DAMPING;
             basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
 
             // Update falling objects
@@ -252,7 +261,7 @@
             }
 
             // Spawn new objects
-            if (Math.random() < 0.02 + level * 0.005) {
+            if (Math.random() < BASE_SPAWN_RATE + level * SPAWN_RATE_INCREASE) {
                 fallingObjects.push(createFallingObject());
             }
         }
