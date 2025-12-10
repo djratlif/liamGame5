@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catch the Stars - Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        h1 {
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #gameCanvas {
+            border: 3px solid white;
+            border-radius: 10px;
+            background: linear-gradient(to bottom, #1a1a2e 0%, #16213e 100%);
+            cursor: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .score-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .instructions {
+            color: white;
+            margin-top: 15px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        #gameOver {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        #gameOver h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+        }
+
+        #gameOver button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: transform 0.2s;
+        }
+
+        #gameOver button:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⭐ Catch the Stars ⭐</h1>
+        <canvas id="gameCanvas" width="600" height="500"></canvas>
+        <div class="score-board">
+            <div class="score-item">Score: <span id="score">0</span></div>
+            <div class="score-item">Lives: <span id="lives">3</span></div>
+            <div class="score-item">Level: <span id="level">1</span></div>
+        </div>
+        <div class="instructions">
+            Move your mouse to control the basket • Catch the stars ⭐ • Avoid the bombs 💣
+        </div>
+    </div>
+
+    <div id="gameOver">
+        <h2>Game Over!</h2>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <p>Level Reached: <span id="finalLevel">1</span></p>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game state
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameRunning = true;
+        let mouseX = canvas.width / 2;
+
+        // Basket
+        const basket = {
+            width: 80,
+            height: 20,
+            x: canvas.width / 2 - 40,
+            y: canvas.height - 40,
+            speed: 8
+        };
+
+        // Falling objects
+        let fallingObjects = [];
+        const objectTypes = {
+            star: { emoji: '⭐', points: 10, isBad: false, size: 25 },
+            bomb: { emoji: '💣', points: 0, isBad: true, size: 25 }
+        };
+
+        // Track mouse position
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+        });
+
+        // Create falling object
+        function createFallingObject() {
+            const types = Object.keys(objectTypes);
+            // Increase bomb probability with level
+            const bombChance = Math.min(0.3, 0.1 + level * 0.02);
+            const type = Math.random() < bombChance ? 'bomb' : 'star';
+            
+            return {
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                type: type,
+                speed: 2 + level * 0.3 + Math.random() * 2
+            };
+        }
+
+        // Draw basket
+        function drawBasket() {
+            // Basket body
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+            
+            // Basket rim
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(basket.x, basket.y, basket.width, basket.height);
+            
+            // Basket pattern
+            ctx.strokeStyle = '#654321';
+            ctx.lineWidth = 2;
+            for (let i = 10; i < basket.width; i += 15) {
+                ctx.beginPath();
+                ctx.moveTo(basket.x + i, basket.y);
+                ctx.lineTo(basket.x + i, basket.y + basket.height);
+                ctx.stroke();
+            }
+        }
+
+        // Draw falling objects
+        function drawFallingObjects() {
+            fallingObjects.forEach(obj => {
+                const objData = objectTypes[obj.type];
+                ctx.font = `${objData.size}px Arial`;
+                ctx.fillText(objData.emoji, obj.x, obj.y);
+            });
+        }
+
+        // Update game state
+        function update() {
+            if (!gameRunning) return;
+
+            // Move basket towards mouse
+            basket.x += (mouseX - basket.x - basket.width / 2) * 0.15;
+            basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
+
+            // Update falling objects
+            for (let i = fallingObjects.length - 1; i >= 0; i--) {
+                const obj = fallingObjects[i];
+                obj.y += obj.speed;
+
+                // Check collision with basket
+                if (obj.y + 20 >= basket.y && obj.y <= basket.y + basket.height) {
+                    if (obj.x + 20 >= basket.x && obj.x <= basket.x + basket.width) {
+                        const objData = objectTypes[obj.type];
+                        if (objData.isBad) {
+                            lives--;
+                            updateLives();
+                            if (lives <= 0) {
+                                endGame();
+                            }
+                        } else {
+                            score += objData.points;
+                            updateScore();
+                            checkLevelUp();
+                        }
+                        fallingObjects.splice(i, 1);
+                        continue;
+                    }
+                }
+
+                // Remove if off screen
+                if (obj.y > canvas.height) {
+                    const objData = objectTypes[obj.type];
+                    if (!objData.isBad) {
+                        lives--;
+                        updateLives();
+                        if (lives <= 0) {
+                            endGame();
+                        }
+                    }
+                    fallingObjects.splice(i, 1);
+                }
+            }
+
+            // Spawn new objects
+            if (Math.random() < 0.02 + level * 0.005) {
+                fallingObjects.push(createFallingObject());
+            }
+        }
+
+        // Draw everything
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw stars in background
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 137) % canvas.width;
+                const y = (i * 211) % canvas.height;
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            drawBasket();
+            drawFallingObjects();
+        }
+
+        // Game loop
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Update score display
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+
+        // Update lives display
+        function updateLives() {
+            document.getElementById('lives').textContent = lives;
+        }
+
+        // Update level display
+        function updateLevel() {
+            document.getElementById('level').textContent = level;
+        }
+
+        // Check for level up
+        function checkLevelUp() {
+            const newLevel = Math.floor(score / 100) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                updateLevel();
+            }
+        }
+
+        // End game
+        function endGame() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalLevel').textContent = level;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        // Restart game
+        function restartGame() {
+            score = 0;
+            lives = 3;
+            level = 1;
+            gameRunning = true;
+            fallingObjects = [];
+            updateScore();
+            updateLives();
+            updateLevel();
+            document.getElementById('gameOver').style.display = 'none';
+        }
+
+        // Start the game
+        gameLoop();
+    </script>
+</body>
+</html>
